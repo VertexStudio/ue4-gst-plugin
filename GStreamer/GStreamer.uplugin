@@ -13,8 +13,7 @@
     {
       "Name": "GStreamer",
       "Type": "Runtime",
-      "LoadingPhase": "PostEngineInit",
-      "WhitelistPlatforms": [ "Win64" ]
+      "LoadingPhase": "PostEngineInit"
     }
   ],
   "Plugins": [

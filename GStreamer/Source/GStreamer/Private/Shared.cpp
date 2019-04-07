@@ -42,7 +42,7 @@ void GstLogW(const char* File, int Line, EGstVerbosity::Type Verbosity, const wc
 	#if PLATFORM_WINDOWS
 		const int n = _vsnwprintf_s(Buffer, LOG_BUF_SIZE - 1, Format, Argptr);
 	#else
-		const int n = _vsnwprintf(Buffer, LOG_BUF_SIZE - 1, Format, Argptr);
+		const int n = vswprintf(Buffer, LOG_BUF_SIZE - 1, Format, Argptr);
 	#endif
 	va_end(Argptr);
 
@@ -53,20 +53,20 @@ void GstLogW(const char* File, int Line, EGstVerbosity::Type Verbosity, const wc
 	}
 }
 
-void* SysLoadLibrary(const wchar_t* Name)
-{
-	return FPlatformProcess::GetDllHandle(Name);
-}
+// void* SysLoadLibrary(const wchar_t* Name)
+// {
+// 	return FPlatformProcess::GetDllHandle(Name);
+// }
 
-void SysFreeLibrary(void* Handle)
-{
-	FPlatformProcess::FreeDllHandle(Handle);
-}
+// void SysFreeLibrary(void* Handle)
+// {
+// 	FPlatformProcess::FreeDllHandle(Handle);
+// }
 
-void* SysGetProcAddress(void* Handle, const char* Name)
-{
-	return FPlatformProcess::GetDllExport(Handle, ANSI_TO_TCHAR(Name));
-}
+// void* SysGetProcAddress(void* Handle, const char* Name)
+// {
+// 	return FPlatformProcess::GetDllExport(Handle, ANSI_TO_TCHAR(Name));
+// }
 
 #if defined(PROF_ENABLED)
 	#include "Profiler.inl"

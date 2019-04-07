@@ -14,8 +14,7 @@
 		{
 			"Name" : "GStreamerLoader",
 			"Type": "Runtime",
-			"LoadingPhase" : "PostConfigInit",
-			"WhitelistPlatforms" : [ "Win64" ]
+			"LoadingPhase" : "PostConfigInit"
 		}
 	]
 }
