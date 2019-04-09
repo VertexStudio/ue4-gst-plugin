@@ -1,6 +1,7 @@
 #include "GstAppSrcComponent.h"
 #include "GstPipelineImpl.h"
-// #include "GstSampleImpl.h"
+#include "Components/SceneCaptureComponent2D.h"
+#include "Engine/TextureRenderTarget2D.h"
 #include "Runtime/Core/Public/Async/Async.h"
 
 UGstAppSrcComponent::UGstAppSrcComponent()
@@ -15,12 +16,12 @@ void UGstAppSrcComponent::UninitializeComponent()
 
 void UGstAppSrcComponent::ResetState()
 {
-	if (AppSrc) AppSrc->Disconnect();
-	// SafeDestroy(Texture);
+	if (AppSrc)
+		AppSrc->Disconnect();
 	SafeDestroy(AppSrc);
 }
 
-void UGstAppSrcComponent::CbPipelineStart(IGstPipeline* Pipeline)
+void UGstAppSrcComponent::CbPipelineStart(IGstPipeline *Pipeline)
 {
 	ResetState();
 
@@ -36,7 +37,18 @@ void UGstAppSrcComponent::CbPipelineStop()
 	ResetState();
 }
 
-void UGstAppSrcComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
+void UGstAppSrcComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction *ThisTickFunction)
 {
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
+
+	AActor *Actor = GetOwner();
+	for (FComponentReference ComponentReference : AppSrcCaptures)
+	{
+		USceneCaptureComponent2D *CaptureComponent = Cast<USceneCaptureComponent2D>(ComponentReference.GetComponent(Actor));
+		UTextureRenderTarget2D *TextureTarget = CaptureComponent->TextureTarget;
+		TArray<FColor> TextureData;
+		FTextureRenderTargetResource *TextureResource = TextureTarget->GameThread_GetRenderTargetResource();
+		TextureResource->ReadPixels(TextureData);
+		AppSrc->PushTexture((uint32_t *)TextureData.GetData(), TextureData.Num());
+	}
 }

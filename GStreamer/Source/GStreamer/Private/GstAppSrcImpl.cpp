@@ -2,9 +2,10 @@
 #include "GstPipelineImpl.h"
 #include "GstSampleImpl.h"
 
-extern "C" {
-	#include <gst/gst.h>
-	#include <gst/video/video-format.h>
+extern "C"
+{
+#include <gst/gst.h>
+#include <gst/app/gstappsrc.h>
 }
 
 #include <vector>
@@ -12,26 +13,24 @@ extern "C" {
 
 class FGstAppSrcImpl : public IGstAppSrc
 {
-public:
-
+  public:
 	FGstAppSrcImpl() {}
 	~FGstAppSrcImpl() { Disconnect(); }
 	virtual void Destroy();
 
-	virtual bool Connect(IGstPipeline* Pipeline, const char* ElementName);
+	virtual bool Connect(IGstPipeline *Pipeline, const char *ElementName);
 	virtual void Disconnect();
+	virtual void PushTexture(const uint32_t *TextureData, size_t TextureSize);
 
-private:
-
+  private:
 	std::string m_Name;
-	GstElement* m_AppSrc = nullptr;
+	GstElement *m_AppSrc = nullptr;
 
-	int m_Format = GST_VIDEO_FORMAT_UNKNOWN;
 	int m_Width = 0;
 	int m_Height = 0;
 };
 
-IGstAppSrc* IGstAppSrc::CreateInstance()
+IGstAppSrc *IGstAppSrc::CreateInstance()
 {
 	auto Obj = new FGstAppSrcImpl();
 	GST_LOG_DBG_A("GstAppSrc: CreateInstance %p", Obj);
@@ -44,7 +43,7 @@ void FGstAppSrcImpl::Destroy()
 	delete this;
 }
 
-bool FGstAppSrcImpl::Connect(IGstPipeline* Pipeline, const char* ElementName)
+bool FGstAppSrcImpl::Connect(IGstPipeline *Pipeline, const char *ElementName)
 {
 	GST_LOG_DBG_A("GstAppSrc: Connect <%s>", ElementName);
 
@@ -81,13 +80,19 @@ void FGstAppSrcImpl::Disconnect()
 	if (m_AppSrc)
 	{
 		GST_LOG_DBG_A("GstAppSrc: Disconnect <%s>", m_Name.c_str());
-
+		gst_app_src_end_of_stream(GST_APP_SRC(m_AppSrc));
 		g_object_set(m_AppSrc, "emit-signals", FALSE, nullptr);
 		gst_object_unref(m_AppSrc);
 		m_AppSrc = nullptr;
 	}
 
-	m_Format = GST_VIDEO_FORMAT_UNKNOWN;
 	m_Width = 0;
 	m_Height = 0;
+}
+
+void FGstAppSrcImpl::PushTexture(const uint32_t *TextureData, size_t TextureSize)
+{
+	GstBuffer *buffer = gst_buffer_new_allocate(nullptr, TextureSize, nullptr);
+	gst_buffer_fill(buffer, 0, TextureData, TextureSize);
+	const auto result = gst_app_src_push_buffer(GST_APP_SRC(m_AppSrc), buffer);
 }
