@@ -7,6 +7,7 @@
 UGstAppSrcComponent::UGstAppSrcComponent()
 {
 	PrimaryComponentTick.bCanEverTick = true;
+	PrimaryComponentTick.TickInterval = 0.1;
 }
 
 void UGstAppSrcComponent::UninitializeComponent()
@@ -40,15 +41,17 @@ void UGstAppSrcComponent::CbPipelineStop()
 void UGstAppSrcComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction *ThisTickFunction)
 {
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
-
-	AActor *Actor = GetOwner();
-	for (FComponentReference ComponentReference : AppSrcCaptures)
+	if (AppSrc)
 	{
-		USceneCaptureComponent2D *CaptureComponent = Cast<USceneCaptureComponent2D>(ComponentReference.GetComponent(Actor));
-		UTextureRenderTarget2D *TextureTarget = CaptureComponent->TextureTarget;
-		TArray<FColor> TextureData;
-		FTextureRenderTargetResource *TextureResource = TextureTarget->GameThread_GetRenderTargetResource();
-		TextureResource->ReadPixels(TextureData);
-		AppSrc->PushTexture((uint32_t *)TextureData.GetData(), TextureData.Num());
+		AActor *Actor = GetOwner();
+		for (FComponentReference ComponentReference : AppSrcCaptures)
+		{
+			USceneCaptureComponent2D *CaptureComponent = Cast<USceneCaptureComponent2D>(ComponentReference.GetComponent(Actor));
+			UTextureRenderTarget2D *TextureTarget = CaptureComponent->TextureTarget;
+			TArray<FColor> TextureData;
+			FTextureRenderTargetResource *TextureResource = TextureTarget->GameThread_GetRenderTargetResource();
+			TextureResource->ReadPixels(TextureData);
+			AppSrc->PushTexture((uint8_t *)TextureData.GetData(), TextureData.Num() * 4);
+		}
 	}
 }

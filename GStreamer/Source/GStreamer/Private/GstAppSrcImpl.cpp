@@ -20,7 +20,7 @@ class FGstAppSrcImpl : public IGstAppSrc
 
 	virtual bool Connect(IGstPipeline *Pipeline, const char *ElementName);
 	virtual void Disconnect();
-	virtual void PushTexture(const uint32_t *TextureData, size_t TextureSize);
+	virtual void PushTexture(const uint8_t *TextureData, size_t TextureSize);
 
   private:
 	std::string m_Name;
@@ -90,9 +90,10 @@ void FGstAppSrcImpl::Disconnect()
 	m_Height = 0;
 }
 
-void FGstAppSrcImpl::PushTexture(const uint32_t *TextureData, size_t TextureSize)
+void FGstAppSrcImpl::PushTexture(const uint8_t *TextureData, size_t TextureSize)
 {
 	GstBuffer *buffer = gst_buffer_new_allocate(nullptr, TextureSize, nullptr);
 	gst_buffer_fill(buffer, 0, TextureData, TextureSize);
-	const auto result = gst_app_src_push_buffer(GST_APP_SRC(m_AppSrc), buffer);
+	const GstFlowReturn result = gst_app_src_push_buffer(GST_APP_SRC(m_AppSrc), buffer);
+	GST_LOG_DBG_A("GstAppSrc: GstFlowReturn <%s> TextureSize <%i>", gst_flow_get_name(result), TextureSize);
 }

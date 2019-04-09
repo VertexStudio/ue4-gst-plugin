@@ -32,6 +32,7 @@ public class GStreamer : ModuleRules
         PublicAdditionalLibraries.Add("glib-2.0");
         PublicAdditionalLibraries.Add("gobject-2.0");
         PublicAdditionalLibraries.Add("gstreamer-1.0");
+        PublicAdditionalLibraries.Add("gstapp-1.0");
         PublicAdditionalLibraries.Add("gstvideo-1.0");
     }
 }

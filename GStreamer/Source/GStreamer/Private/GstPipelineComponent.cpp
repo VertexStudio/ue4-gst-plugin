@@ -1,5 +1,6 @@
 #include "GstPipelineComponent.h"
 #include "GstAppSinkComponent.h"
+#include "GstAppSrcComponent.h"
 #include "GameFramework/Actor.h"
 
 UGstPipelineComponent::UGstPipelineComponent()
@@ -43,20 +44,41 @@ bool UGstPipelineComponent::StartPipeline()
 
 	if (!PipelineConfig.IsEmpty())
 	{
-		Pipeline = IGstPipeline::CreateInstance();
+		if (UseGstMainLoop)
+		{
+			Pipeline = IGstPipeline::CreateLoop();
+		}
+		else
+		{
+			Pipeline = IGstPipeline::CreateTick();
+		}
 		if (Pipeline->Init(TCHAR_TO_ANSI(*PipelineName), TCHAR_TO_ANSI(*PipelineConfig)))
 		{
-			TInlineComponentArray<UGstAppSinkComponent*> Components;
-			GetOwner()->GetComponents(Components);
-			for (auto* Comp : Components)
 			{
-				if (Comp->PipelineName == PipelineName)
+				TInlineComponentArray<UGstAppSinkComponent *> Components;
+				GetOwner()->GetComponents(Components);
+				for (auto *Comp : Components)
 				{
-					Comp->CbPipelineStart(Pipeline);
+					if (Comp->PipelineName == PipelineName)
+					{
+						Comp->CbPipelineStart(Pipeline);
+					}
+				}
+			}
+			{
+				TInlineComponentArray<UGstAppSrcComponent *> Components;
+				GetOwner()->GetComponents(Components);
+				for (auto *Comp : Components)
+				{
+					if (Comp->PipelineName == PipelineName)
+					{
+						Comp->CbPipelineStart(Pipeline);
+					}
 				}
 			}
 
-			if (Pipeline->Start()) return true;
+			if (Pipeline->Start())
+				return true;
 		}
 	}
 
@@ -68,13 +90,26 @@ void UGstPipelineComponent::StopPipeline()
 {
 	if (Pipeline)
 	{
-		TInlineComponentArray<UGstAppSinkComponent*> Components;
-		GetOwner()->GetComponents(Components);
-		for (auto* Comp : Components)
 		{
-			if (Comp->PipelineName == PipelineName)
+			TInlineComponentArray<UGstAppSinkComponent *> Components;
+			GetOwner()->GetComponents(Components);
+			for (auto *Comp : Components)
 			{
-				Comp->CbPipelineStop();
+				if (Comp->PipelineName == PipelineName)
+				{
+					Comp->CbPipelineStop();
+				}
+			}
+		}
+		{
+			TInlineComponentArray<UGstAppSrcComponent *> Components;
+			GetOwner()->GetComponents(Components);
+			for (auto *Comp : Components)
+			{
+				if (Comp->PipelineName == PipelineName)
+				{
+					Comp->CbPipelineStop();
+				}
 			}
 		}
 	}
