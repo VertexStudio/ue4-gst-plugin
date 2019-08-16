@@ -2,11 +2,10 @@
 
 # Setup
 
-- Clone this repository:
+- Clone this repository in the `Plugins` directory of your UE4 project:
 ```
-git clone git@github.com:racsoraul/ue4-gst-plugin.git
+git clone git@github.com:Simbotic/ue4-gst-plugin.git
 ```
-- Copy content in the `Plugins` directory of your UE4 project.
 
 # Usage
 
