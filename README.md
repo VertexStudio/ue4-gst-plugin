@@ -43,6 +43,14 @@ Blueprints:
 
 ![gst-plugin-ue4 blueprints](docs/media/gst_pipeline.png)
 
+GstAppSrc component:  
+
+![gst-plugin-ue4 blueprints](docs/media/GstAppSrc.png)
+
+GstPipeline component: 
+ 
+![gst-plugin-ue4 blueprints](docs/media/GstPipeline.png)
+
 Details panel:
 
 ![gst-plugin-ue4 details panel](docs/media/details_panel.png)
