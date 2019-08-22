@@ -62,10 +62,8 @@ void FGstTexture::TickGameThread()
 		if (m_TextureObject)
 		{
 			// render commands should be submitted only from game thread
-			ENQUEUE_UNIQUE_RENDER_COMMAND_TWOPARAMETER(
-				UpdateTextureCmd,
-				FGstTexture*, Context, this,
-				IGstSample*, Sample, Sample,
+			FGstTexture* Context = this;
+			ENQUEUE_RENDER_COMMAND(UpdateTextureCmd)([Context, Sample](FRHICommandListImmediate& RHICmdList)
 			{
 				Context->RenderCmd_UpdateTexture(Sample);
 			});
@@ -146,9 +144,8 @@ void FGstTexture::Resize(IGstSample* Sample)
 		m_Height = Sample->GetHeight();
 		m_Pitch = m_Width * GPixelFormats[m_UeFormat].BlockBytes;
 
-		ENQUEUE_UNIQUE_RENDER_COMMAND_ONEPARAMETER(
-			CreateTextureCmd,
-			FGstTexture*, Context, this,
+		FGstTexture* Context = this;
+		ENQUEUE_RENDER_COMMAND(CreateTextureCmd)([Context](FRHICommandListImmediate& RHICmdList)
 		{
 			Context->RenderCmd_CreateTexture();
 		});

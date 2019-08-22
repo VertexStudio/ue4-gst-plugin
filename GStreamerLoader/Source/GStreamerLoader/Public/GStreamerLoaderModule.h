@@ -1,6 +1,6 @@
 #pragma once
 
-#include "ModuleManager.h"
+#include "Modules/ModuleManager.h"
 
 class GSTREAMERLOADER_API IGStreamerLoaderModule : public IModuleInterface
 {
