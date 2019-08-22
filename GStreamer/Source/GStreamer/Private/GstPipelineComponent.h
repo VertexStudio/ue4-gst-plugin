@@ -4,7 +4,7 @@
 #include "GstPipelineImpl.h"
 #include "GstPipelineComponent.generated.h"
 
-UCLASS( ClassGroup=(Custom), meta=(BlueprintSpawnableComponent) )
+UCLASS( ClassGroup=(Simbotic), meta=(BlueprintSpawnableComponent) )
 class GSTREAMER_API UGstPipelineComponent : public UGstElementComponent
 {
 	GENERATED_BODY()

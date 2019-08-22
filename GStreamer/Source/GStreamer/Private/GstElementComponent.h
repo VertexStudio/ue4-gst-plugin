@@ -4,7 +4,7 @@
 #include "Components/SceneComponent.h"
 #include "GstElementComponent.generated.h"
 
-UCLASS( ClassGroup=(Custom) )
+UCLASS( ClassGroup=(Simbotic) )
 class GSTREAMER_API UGstElementComponent : public UActorComponent
 {
 	GENERATED_BODY()

@@ -5,7 +5,7 @@
 #include "GstVideoFormat.h"
 #include "GstAppSrcComponent.generated.h"
 
-UCLASS(ClassGroup = (Custom), meta = (BlueprintSpawnableComponent))
+UCLASS(ClassGroup = (Simbotic), meta = (BlueprintSpawnableComponent))
 class GSTREAMER_API UGstAppSrcComponent : public UGstElementComponent
 {
 	GENERATED_BODY()

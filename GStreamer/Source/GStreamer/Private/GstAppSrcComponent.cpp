@@ -48,10 +48,17 @@ void UGstAppSrcComponent::TickComponent(float DeltaTime, ELevelTick TickType, FA
 		{
 			USceneCaptureComponent2D *CaptureComponent = Cast<USceneCaptureComponent2D>(ComponentReference.GetComponent(Actor));
 			UTextureRenderTarget2D *TextureTarget = CaptureComponent->TextureTarget;
-			TArray<FColor> TextureData;
-			FTextureRenderTargetResource *TextureResource = TextureTarget->GameThread_GetRenderTargetResource();
-			TextureResource->ReadPixels(TextureData);
-			AppSrc->PushTexture((uint8_t *)TextureData.GetData(), TextureData.Num() * 4);
+			if (TextureTarget)
+			{
+				TArray<FColor> TextureData;
+				FTextureRenderTargetResource *TextureResource = TextureTarget->GameThread_GetRenderTargetResource();
+				TextureResource->ReadPixels(TextureData);
+				AppSrc->PushTexture((uint8_t *)TextureData.GetData(), TextureData.Num() * 4);
+			}
+			else
+			{
+				GST_LOG_ERR(TEXT("GstAppSrc: Missing TextureTarget"));
+			}
 		}
 	}
 }
