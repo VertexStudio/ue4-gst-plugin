@@ -10,9 +10,10 @@ class GSTREAMER_API UGstAppSrcComponent : public UGstElementComponent
 {
 	GENERATED_BODY()
 
-  public:
+public:
 	UGstAppSrcComponent();
 
+	virtual void BeginPlay() override;
 	virtual void UninitializeComponent() override;
 	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction *ThisTickFunction) override;
 
@@ -28,10 +29,13 @@ class GSTREAMER_API UGstAppSrcComponent : public UGstElementComponent
 	UPROPERTY(Category = "GstAppSrc", EditAnywhere, BlueprintReadWrite)
 	bool AppSrcEnabled;
 
-	UPROPERTY(Category = "GstAppSrc", EditAnywhere)
-	TArray<FComponentReference> AppSrcCaptures;
+	UPROPERTY(Category = "GstAppSrc", EditAnywhere, BlueprintReadWrite)
+	float AppSrcHz = 30;
 
-  protected:
+	UPROPERTY(Category = "GstAppSrc", EditAnywhere)
+	FComponentReference AppSrcCapture;
+
+protected:
 	void ResetState();
 
 	IGstAppSrc *AppSrc = nullptr;

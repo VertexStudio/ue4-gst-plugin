@@ -13,7 +13,7 @@ extern "C"
 
 class FGstAppSrcImpl : public IGstAppSrc
 {
-  public:
+public:
 	FGstAppSrcImpl() {}
 	~FGstAppSrcImpl() { Disconnect(); }
 	virtual void Destroy();
@@ -22,12 +22,26 @@ class FGstAppSrcImpl : public IGstAppSrc
 	virtual void Disconnect();
 	virtual void PushTexture(const uint8_t *TextureData, size_t TextureSize);
 
-  private:
+	virtual int GetTextureWidth()
+	{
+		return m_Width;
+	}
+	virtual int GetTextureHeight()
+	{
+		return m_Height;
+	}
+	virtual EGstTextureFormat GetTextureFormat()
+	{
+		return m_Format;
+	}
+
+private:
 	std::string m_Name;
 	GstElement *m_AppSrc = nullptr;
 
-	int m_Width = 0;
-	int m_Height = 0;
+	gint m_Width = 0;
+	gint m_Height = 0;
+	EGstTextureFormat m_Format;
 };
 
 IGstAppSrc *IGstAppSrc::CreateInstance()
@@ -64,6 +78,27 @@ bool FGstAppSrcImpl::Connect(IGstPipeline *Pipeline, const char *ElementName)
 			break;
 		}
 
+		GstCaps *caps = gst_app_src_get_caps(GST_APP_SRC(m_AppSrc));
+		guint num_caps = gst_caps_get_size(caps);
+		if (num_caps > 0)
+		{
+			gchar *format;
+			GstStructure *st = gst_caps_get_structure(caps, 0);
+			if (gst_structure_get(st,
+								  "width", G_TYPE_INT, &m_Width,
+								  "height", G_TYPE_INT, &m_Height,
+								  "format", G_TYPE_STRING, &format, NULL))
+			{
+				GST_LOG_DBG_A("GstAppSrc: Found CAPS width:%i height:%i format:%s", m_Width, m_Height, format);
+				if (strncmp(format, "BGRA", 4) == 0)
+				{
+					m_Format = EGstTextureFormat::GST_VIDEO_FORMAT_BGRA;
+				}
+				g_free(format);
+			}
+		}
+		gst_caps_unref(caps);
+
 		g_object_set(m_AppSrc, "emit-signals", TRUE, nullptr);
 
 		GST_LOG_DBG_A("GstAppSrc: Connect SUCCESS");
@@ -94,6 +129,7 @@ void FGstAppSrcImpl::PushTexture(const uint8_t *TextureData, size_t TextureSize)
 {
 	GstBuffer *buffer = gst_buffer_new_allocate(nullptr, TextureSize, nullptr);
 	gst_buffer_fill(buffer, 0, TextureData, TextureSize);
-	const GstFlowReturn result = gst_app_src_push_buffer(GST_APP_SRC(m_AppSrc), buffer);
-	GST_LOG_DBG_A("GstAppSrc: GstFlowReturn <%s> TextureSize <%i>", gst_flow_get_name(result), TextureSize);
+	gst_app_src_push_buffer(GST_APP_SRC(m_AppSrc), buffer);
+	// const GstFlowReturn result = gst_app_src_push_buffer(GST_APP_SRC(m_AppSrc), buffer);
+	// GST_LOG_DBG_A("GstAppSrc: GstFlowReturn <%s> TextureSize <%i>", gst_flow_get_name(result), TextureSize);
 }

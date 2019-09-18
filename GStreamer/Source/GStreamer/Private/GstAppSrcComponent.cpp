@@ -7,12 +7,17 @@
 UGstAppSrcComponent::UGstAppSrcComponent()
 {
 	PrimaryComponentTick.bCanEverTick = true;
-	PrimaryComponentTick.TickInterval = 0.1;
 }
 
 void UGstAppSrcComponent::UninitializeComponent()
 {
 	ResetState();
+}
+
+void UGstAppSrcComponent::BeginPlay()
+{
+	Super::BeginPlay();
+	PrimaryComponentTick.TickInterval = 1.0 / AppSrcHz;
 }
 
 void UGstAppSrcComponent::ResetState()
@@ -44,9 +49,9 @@ void UGstAppSrcComponent::TickComponent(float DeltaTime, ELevelTick TickType, FA
 	if (AppSrc)
 	{
 		AActor *Actor = GetOwner();
-		for (FComponentReference ComponentReference : AppSrcCaptures)
+		USceneCaptureComponent2D *CaptureComponent = Cast<USceneCaptureComponent2D>(AppSrcCapture.GetComponent(Actor));
+		if (CaptureComponent)
 		{
-			USceneCaptureComponent2D *CaptureComponent = Cast<USceneCaptureComponent2D>(ComponentReference.GetComponent(Actor));
 			UTextureRenderTarget2D *TextureTarget = CaptureComponent->TextureTarget;
 			if (TextureTarget)
 			{
@@ -55,10 +60,23 @@ void UGstAppSrcComponent::TickComponent(float DeltaTime, ELevelTick TickType, FA
 				TextureResource->ReadPixels(TextureData);
 				AppSrc->PushTexture((uint8_t *)TextureData.GetData(), TextureData.Num() * 4);
 			}
+			else if (AppSrc->GetTextureFormat() == EGstTextureFormat::GST_VIDEO_FORMAT_BGRA)
+			{
+				UTextureRenderTarget2D *NewRenderTarget2D = NewObject<UTextureRenderTarget2D>();
+				check(NewRenderTarget2D);
+				NewRenderTarget2D->RenderTargetFormat = ETextureRenderTargetFormat::RTF_RGBA8;
+				NewRenderTarget2D->InitAutoFormat(AppSrc->GetTextureWidth(), AppSrc->GetTextureHeight());
+				NewRenderTarget2D->UpdateResourceImmediate(true);
+				CaptureComponent->TextureTarget = NewRenderTarget2D;
+			}
 			else
 			{
 				GST_LOG_ERR(TEXT("GstAppSrc: Missing TextureTarget"));
 			}
+		}
+		else
+		{
+			GST_LOG_ERR(TEXT("GstAppSrc: AppSrcCapture is not a USceneCaptureComponent2D"));
 		}
 	}
 }
