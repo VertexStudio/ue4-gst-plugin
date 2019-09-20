@@ -44,7 +44,7 @@ bool UGstPipelineComponent::StartPipeline()
 
     if (!PipelineConfig.IsEmpty())
     {
-        Pipeline = IGstPipeline::CreateInstance();
+        Pipeline = IGstPipeline::CreateInstance(TCHAR_TO_ANSI(*PipelineName));
         if (Pipeline->Init(TCHAR_TO_ANSI(*PipelineName), TCHAR_TO_ANSI(*PipelineConfig)))
         {
             {

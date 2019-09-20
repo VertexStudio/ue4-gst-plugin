@@ -19,12 +19,18 @@ enum class EGstTextureFormat : unsigned char
   GST_VIDEO_FORMAT_BGRA,
 };
 
+class IGstAppSrcCallback
+{
+public:
+	virtual void CbGstPushTexture() = 0;
+};
+
 class IGstAppSrc
 {
 	GST_INTERFACE_IMPL(IGstAppSrc)
 
   public:
-	virtual bool Connect(class IGstPipeline *Pipeline, const char *ElementName) = 0;
+	virtual bool Connect(class IGstPipeline *Pipeline, const char *ElementName, IGstAppSrcCallback* Callback) = 0;
 	virtual void Disconnect() = 0;
 	virtual void PushTexture(const uint8_t *TextureData, size_t TextureSize) = 0;
 

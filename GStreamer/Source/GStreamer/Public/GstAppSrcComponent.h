@@ -3,10 +3,11 @@
 #include "GstElementComponent.h"
 #include "GstAppSrcImpl.h"
 #include "GstVideoFormat.h"
+#include "GstKlv.h"
 #include "GstAppSrcComponent.generated.h"
 
 UCLASS(ClassGroup = (Simbotic), meta = (BlueprintSpawnableComponent))
-class GSTREAMER_API UGstAppSrcComponent : public UGstElementComponent
+class GSTREAMER_API UGstAppSrcComponent : public UGstElementComponent, public IGstAppSrcCallback
 {
 	GENERATED_BODY()
 
@@ -19,6 +20,7 @@ public:
 
 	virtual void CbPipelineStart(class IGstPipeline *Pipeline);
 	virtual void CbPipelineStop();
+	virtual void CbGstPushTexture();
 
 	UPROPERTY(Category = "GstAppSrc", EditAnywhere, BlueprintReadWrite)
 	FString PipelineName;
@@ -29,14 +31,16 @@ public:
 	UPROPERTY(Category = "GstAppSrc", EditAnywhere, BlueprintReadWrite)
 	bool AppSrcEnabled;
 
-	UPROPERTY(Category = "GstAppSrc", EditAnywhere, BlueprintReadWrite)
-	float AppSrcHz = 30;
-
 	UPROPERTY(Category = "GstAppSrc", EditAnywhere)
 	FComponentReference AppSrcCapture;
+
+	void SetKlv(TArray<FGstKlv> Klv);
 
 protected:
 	void ResetState();
 
 	IGstAppSrc *AppSrc = nullptr;
+	TArray<FGstKlv> Klv;
+
+	bool NeedsData = false;
 };

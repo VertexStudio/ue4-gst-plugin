@@ -15,15 +15,11 @@ DEFINE_LOG_CATEGORY(LogGStreamer);
 
 static FString GetGstRoot()
 {
-	const int32 BufSize = 2048;
-	TCHAR RootPath[BufSize] = {0};
-
-	FPlatformMisc::GetEnvironmentVariable(TEXT("GSTREAMER_ROOT_X86_64"), RootPath, BufSize);
-	if (!RootPath[0])
+	FString RootPath = FPlatformMisc::GetEnvironmentVariable(TEXT("GSTREAMER_ROOT_X86_64"));
+	if (RootPath.IsEmpty())
 	{
-		FPlatformMisc::GetEnvironmentVariable(TEXT("GSTREAMER_ROOT"), RootPath, BufSize);
+		RootPath = FPlatformMisc::GetEnvironmentVariable(TEXT("GSTREAMER_ROOT"));
 	}
-
 	return FString(RootPath);
 }
 

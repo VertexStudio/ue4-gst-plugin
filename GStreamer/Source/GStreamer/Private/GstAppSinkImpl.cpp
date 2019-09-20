@@ -41,16 +41,16 @@ private:
 	std::mutex m_SampleMx;
 };
 
-IGstAppSink* IGstAppSink::CreateInstance()
+IGstAppSink* IGstAppSink::CreateInstance(const char *ElementName)
 {
 	auto Obj = new FGstAppSinkImpl();
-	GST_LOG_DBG_A("GstAppSink: CreateInstance %p", Obj);
+	GST_LOG_DBG_A("GstAppSink: CreateInstance %p %s", Obj, ElementName);
 	return Obj;
 }
 
 void FGstAppSinkImpl::Destroy()
 {
-	GST_LOG_DBG_A("GstAppSink: Destroy %p", this);
+	GST_LOG_DBG_A("GstAppSink: Destroy %p", this, m_Name.c_str());
 	delete this;
 }
 
@@ -180,7 +180,7 @@ IGstSample* FGstAppSinkImpl::AllocSample()
 		}
 	}
 
-	auto Sample = IGstSample::CreateInstance();
+	auto Sample = IGstSample::CreateInstance(nullptr);
 	return Sample;
 }
 

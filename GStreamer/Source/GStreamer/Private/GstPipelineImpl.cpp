@@ -35,16 +35,16 @@ private:
 	std::unique_ptr<std::thread> m_Worker;
 };
 
-IGstPipeline* IGstPipeline::CreateInstance()
+IGstPipeline* IGstPipeline::CreateInstance(const char *ElementName)
 {
 	auto Obj = new FGstPipelineImpl();
-	GST_LOG_DBG_A("GstPipeline: CreateInstance %p", Obj);
+	GST_LOG_DBG_A("GstPipeline: CreateInstance %p %s", Obj, ElementName);
 	return Obj;
 }
 
 void FGstPipelineImpl::Destroy()
 {
-	GST_LOG_DBG_A("GstPipeline: Destroy %p", this);
+	GST_LOG_DBG_A("GstPipeline: Destroy %p %s", this, m_Name.c_str());
 	delete this;
 }
 

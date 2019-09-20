@@ -17,7 +17,6 @@ void UGstAppSrcComponent::UninitializeComponent()
 void UGstAppSrcComponent::BeginPlay()
 {
 	Super::BeginPlay();
-	PrimaryComponentTick.TickInterval = 1.0 / AppSrcHz;
 }
 
 void UGstAppSrcComponent::ResetState()
@@ -33,14 +32,19 @@ void UGstAppSrcComponent::CbPipelineStart(IGstPipeline *Pipeline)
 
 	if (AppSrcEnabled && !AppSrcName.IsEmpty())
 	{
-		AppSrc = IGstAppSrc::CreateInstance();
-		AppSrc->Connect(Pipeline, TCHAR_TO_ANSI(*AppSrcName));
+		AppSrc = IGstAppSrc::CreateInstance(TCHAR_TO_ANSI(*AppSrcName));
+		AppSrc->Connect(Pipeline, TCHAR_TO_ANSI(*AppSrcName), this);
 	}
 }
 
 void UGstAppSrcComponent::CbPipelineStop()
 {
 	ResetState();
+}
+
+void UGstAppSrcComponent::CbGstPushTexture()
+{
+	NeedsData = true;
 }
 
 void UGstAppSrcComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction *ThisTickFunction)
@@ -55,10 +59,14 @@ void UGstAppSrcComponent::TickComponent(float DeltaTime, ELevelTick TickType, FA
 			UTextureRenderTarget2D *TextureTarget = CaptureComponent->TextureTarget;
 			if (TextureTarget)
 			{
-				TArray<FColor> TextureData;
-				FTextureRenderTargetResource *TextureResource = TextureTarget->GameThread_GetRenderTargetResource();
-				TextureResource->ReadPixels(TextureData);
-				AppSrc->PushTexture((uint8_t *)TextureData.GetData(), TextureData.Num() * 4);
+				if (NeedsData)
+				{
+					NeedsData = false;
+					TArray<FColor> TextureData;
+					FTextureRenderTargetResource *TextureResource = TextureTarget->GameThread_GetRenderTargetResource();
+					TextureResource->ReadPixels(TextureData);
+					AppSrc->PushTexture((uint8_t *)TextureData.GetData(), TextureData.Num() * 4);
+				}
 			}
 			else if (AppSrc->GetTextureFormat() == EGstTextureFormat::GST_VIDEO_FORMAT_BGRA)
 			{
@@ -79,4 +87,9 @@ void UGstAppSrcComponent::TickComponent(float DeltaTime, ELevelTick TickType, FA
 			GST_LOG_ERR(TEXT("GstAppSrc: AppSrcCapture is not a USceneCaptureComponent2D"));
 		}
 	}
+}
+
+void UGstAppSrcComponent::SetKlv(TArray<FGstKlv> _Klv)
+{
+	Klv = _Klv;
 }

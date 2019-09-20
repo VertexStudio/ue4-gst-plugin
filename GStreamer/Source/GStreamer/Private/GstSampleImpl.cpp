@@ -36,7 +36,7 @@ private:
 	int m_Height = 0;
 };
 
-IGstSample* IGstSample::CreateInstance()
+IGstSample* IGstSample::CreateInstance(const char *ElementName)
 {
 	return new FGstSampleImpl();
 }
