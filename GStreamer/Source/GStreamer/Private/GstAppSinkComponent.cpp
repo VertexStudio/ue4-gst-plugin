@@ -26,7 +26,7 @@ void UGstAppSinkComponent::CbPipelineStart(IGstPipeline* Pipeline)
 
 	if (AppSinkEnabled && !AppSinkName.IsEmpty())
 	{
-		AppSink = IGstAppSink::CreateInstance();
+		AppSink = IGstAppSink::CreateInstance(TCHAR_TO_ANSI(*AppSinkName));
 		Texture = new FGstTexture(AppSinkName, AppSink, this);
 		AppSink->Connect(Pipeline, TCHAR_TO_ANSI(*AppSinkName), this);
 	}

@@ -11,39 +11,67 @@ extern "C"
 #include <vector>
 #include <mutex>
 
+GstClockTime SecsToNano(float secs)
+{
+	return (GstClockTime)(secs * 1000000000);
+}
+
 class FGstAppSrcImpl : public IGstAppSrc
 {
-  public:
+public:
 	FGstAppSrcImpl() {}
 	~FGstAppSrcImpl() { Disconnect(); }
 	virtual void Destroy();
 
-	virtual bool Connect(IGstPipeline *Pipeline, const char *ElementName);
+	virtual bool Connect(IGstPipeline *Pipeline, const char *ElementName, IGstAppSrcCallback *Callback);
 	virtual void Disconnect();
+
 	virtual void PushTexture(const uint8_t *TextureData, size_t TextureSize);
 
-  private:
+	virtual int GetTextureWidth()
+	{
+		return m_Width;
+	}
+	virtual int GetTextureHeight()
+	{
+		return m_Height;
+	}
+	virtual EGstTextureFormat GetTextureFormat()
+	{
+		return m_Format;
+	}
+
+	void OnNeedData(GstElement *Sink, guint size);
+
+private:
 	std::string m_Name;
+	IGstAppSrcCallback *m_Callback = nullptr;
 	GstElement *m_AppSrc = nullptr;
 
-	int m_Width = 0;
-	int m_Height = 0;
+	gint m_Width = 0;
+	gint m_Height = 0;
+	EGstTextureFormat m_Format;
+	gint m_Framerate = 1;
+
+	GstClockTime m_Timestamp = 0;
 };
 
-IGstAppSrc *IGstAppSrc::CreateInstance()
+IGstAppSrc *IGstAppSrc::CreateInstance(const char *ElementName)
 {
 	auto Obj = new FGstAppSrcImpl();
-	GST_LOG_DBG_A("GstAppSrc: CreateInstance %p", Obj);
+	GST_LOG_DBG_A("GstAppSrc: CreateInstance %p %s", Obj, ElementName);
 	return Obj;
 }
 
 void FGstAppSrcImpl::Destroy()
 {
-	GST_LOG_DBG_A("GstAppSrc: Destroy %p", this);
+	GST_LOG_DBG_A("GstAppSrc: Destroy %p %s", this, m_Name.c_str());
 	delete this;
 }
 
-bool FGstAppSrcImpl::Connect(IGstPipeline *Pipeline, const char *ElementName)
+static void NeedDataFunc(GstElement *Sink, guint Size, FGstAppSrcImpl *Context) { Context->OnNeedData(Sink, Size); }
+
+bool FGstAppSrcImpl::Connect(IGstPipeline *Pipeline, const char *ElementName, IGstAppSrcCallback *Callback)
 {
 	GST_LOG_DBG_A("GstAppSrc: Connect <%s>", ElementName);
 
@@ -56,6 +84,7 @@ bool FGstAppSrcImpl::Connect(IGstPipeline *Pipeline, const char *ElementName)
 	for (;;)
 	{
 		m_Name = ElementName;
+		m_Callback = Callback;
 
 		m_AppSrc = gst_bin_get_by_name(GST_BIN(Pipeline->GetGPipeline()), ElementName);
 		if (!m_AppSrc)
@@ -64,7 +93,38 @@ bool FGstAppSrcImpl::Connect(IGstPipeline *Pipeline, const char *ElementName)
 			break;
 		}
 
-		g_object_set(m_AppSrc, "emit-signals", TRUE, nullptr);
+		GstCaps *caps = gst_app_src_get_caps(GST_APP_SRC(m_AppSrc));
+		guint num_caps = gst_caps_get_size(caps);
+		if (num_caps > 0)
+		{
+			gchar *format;
+			gint fps_n = 0, fps_d;
+			GstStructure *st = gst_caps_get_structure(caps, 0);
+			if (gst_structure_get(st,
+								  "width", G_TYPE_INT, &m_Width,
+								  "height", G_TYPE_INT, &m_Height,
+								  "format", G_TYPE_STRING, &format,
+								  "framerate", GST_TYPE_FRACTION, &fps_n, &fps_d,
+								  NULL))
+			{
+				m_Framerate = fps_n / fps_d;
+				GST_LOG_DBG_A("GstAppSrc: Found CAPS width:%i height:%i format:%s fps:%i", m_Width, m_Height, format, m_Framerate);
+				if (strncmp(format, "BGRA", 4) == 0)
+				{
+					m_Format = EGstTextureFormat::GST_VIDEO_FORMAT_BGRA;
+				}
+				g_free(format);
+			}
+		}
+		gst_caps_unref(caps);
+
+		g_object_set(m_AppSrc,
+					 "emit-signals", TRUE,
+					 "do-timestamp", TRUE,
+					 "format", GST_FORMAT_TIME,
+					 nullptr);
+
+		g_signal_connect(m_AppSrc, "need-data", G_CALLBACK(NeedDataFunc), this);
 
 		GST_LOG_DBG_A("GstAppSrc: Connect SUCCESS");
 		return true;
@@ -88,12 +148,24 @@ void FGstAppSrcImpl::Disconnect()
 
 	m_Width = 0;
 	m_Height = 0;
+	m_Timestamp = 0;
 }
 
 void FGstAppSrcImpl::PushTexture(const uint8_t *TextureData, size_t TextureSize)
 {
 	GstBuffer *buffer = gst_buffer_new_allocate(nullptr, TextureSize, nullptr);
 	gst_buffer_fill(buffer, 0, TextureData, TextureSize);
-	const GstFlowReturn result = gst_app_src_push_buffer(GST_APP_SRC(m_AppSrc), buffer);
-	GST_LOG_DBG_A("GstAppSrc: GstFlowReturn <%s> TextureSize <%i>", gst_flow_get_name(result), TextureSize);
+
+	GST_BUFFER_PTS(buffer) = m_Timestamp;
+	GST_BUFFER_DURATION(buffer) = gst_util_uint64_scale_int(1, GST_SECOND, m_Framerate);
+	m_Timestamp += GST_BUFFER_DURATION(buffer);
+
+	gst_app_src_push_buffer(GST_APP_SRC(m_AppSrc), buffer);
+	// const GstFlowReturn result = gst_app_src_push_buffer(GST_APP_SRC(m_AppSrc), buffer);
+	// GST_LOG_DBG_A("GstAppSrc: GstFlowReturn <%s> TextureSize <%i>", gst_flow_get_name(result), TextureSize);
+}
+
+void FGstAppSrcImpl::OnNeedData(GstElement *Sink, guint Size)
+{
+	m_Callback->CbGstPushTexture();
 }

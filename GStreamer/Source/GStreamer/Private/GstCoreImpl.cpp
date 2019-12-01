@@ -26,3 +26,4 @@ void FGstCoreImpl::Deinit()
 {
 	gst_deinit();
 }
+

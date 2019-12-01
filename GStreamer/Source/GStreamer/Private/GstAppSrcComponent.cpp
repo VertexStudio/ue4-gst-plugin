@@ -7,12 +7,16 @@
 UGstAppSrcComponent::UGstAppSrcComponent()
 {
 	PrimaryComponentTick.bCanEverTick = true;
-	PrimaryComponentTick.TickInterval = 0.1;
 }
 
 void UGstAppSrcComponent::UninitializeComponent()
 {
 	ResetState();
+}
+
+void UGstAppSrcComponent::BeginPlay()
+{
+	Super::BeginPlay();
 }
 
 void UGstAppSrcComponent::ResetState()
@@ -28,8 +32,8 @@ void UGstAppSrcComponent::CbPipelineStart(IGstPipeline *Pipeline)
 
 	if (AppSrcEnabled && !AppSrcName.IsEmpty())
 	{
-		AppSrc = IGstAppSrc::CreateInstance();
-		AppSrc->Connect(Pipeline, TCHAR_TO_ANSI(*AppSrcName));
+		AppSrc = IGstAppSrc::CreateInstance(TCHAR_TO_ANSI(*AppSrcName));
+		AppSrc->Connect(Pipeline, TCHAR_TO_ANSI(*AppSrcName), this);
 	}
 }
 
@@ -38,20 +42,54 @@ void UGstAppSrcComponent::CbPipelineStop()
 	ResetState();
 }
 
+void UGstAppSrcComponent::CbGstPushTexture()
+{
+	NeedsData = true;
+}
+
 void UGstAppSrcComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction *ThisTickFunction)
 {
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
 	if (AppSrc)
 	{
 		AActor *Actor = GetOwner();
-		for (FComponentReference ComponentReference : AppSrcCaptures)
+		USceneCaptureComponent2D *CaptureComponent = Cast<USceneCaptureComponent2D>(AppSrcCapture.GetComponent(Actor));
+		if (CaptureComponent)
 		{
-			USceneCaptureComponent2D *CaptureComponent = Cast<USceneCaptureComponent2D>(ComponentReference.GetComponent(Actor));
 			UTextureRenderTarget2D *TextureTarget = CaptureComponent->TextureTarget;
-			TArray<FColor> TextureData;
-			FTextureRenderTargetResource *TextureResource = TextureTarget->GameThread_GetRenderTargetResource();
-			TextureResource->ReadPixels(TextureData);
-			AppSrc->PushTexture((uint8_t *)TextureData.GetData(), TextureData.Num() * 4);
+			if (TextureTarget)
+			{
+				if (NeedsData)
+				{
+					NeedsData = false;
+					TArray<FColor> TextureData;
+					FTextureRenderTargetResource *TextureResource = TextureTarget->GameThread_GetRenderTargetResource();
+					TextureResource->ReadPixels(TextureData);
+					AppSrc->PushTexture((uint8_t *)TextureData.GetData(), TextureData.Num() * 4);
+				}
+			}
+			else if (AppSrc->GetTextureFormat() == EGstTextureFormat::GST_VIDEO_FORMAT_BGRA)
+			{
+				UTextureRenderTarget2D *NewRenderTarget2D = NewObject<UTextureRenderTarget2D>();
+				check(NewRenderTarget2D);
+				NewRenderTarget2D->RenderTargetFormat = ETextureRenderTargetFormat::RTF_RGBA8;
+				NewRenderTarget2D->InitAutoFormat(AppSrc->GetTextureWidth(), AppSrc->GetTextureHeight());
+				NewRenderTarget2D->UpdateResourceImmediate(true);
+				CaptureComponent->TextureTarget = NewRenderTarget2D;
+			}
+			else
+			{
+				GST_LOG_ERR(TEXT("GstAppSrc: Missing TextureTarget"));
+			}
+		}
+		else
+		{
+			GST_LOG_ERR(TEXT("GstAppSrc: AppSrcCapture is not a USceneCaptureComponent2D"));
 		}
 	}
+}
+
+void UGstAppSrcComponent::SetKlv(TArray<FGstKlv> _Klv)
+{
+	Klv = _Klv;
 }

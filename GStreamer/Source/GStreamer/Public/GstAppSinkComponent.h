@@ -8,7 +8,7 @@
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_FiveParams(FGstTextureCreatedSignature, UGstAppSinkComponent*, AppSink, UTexture2D*, NewTexture, EGstVideoFormat, Format, int, Width, int, Height);
 
-UCLASS( ClassGroup=(Custom), meta=(BlueprintSpawnableComponent) )
+UCLASS( ClassGroup=(Simbotic), meta=(BlueprintSpawnableComponent) )
 class GSTREAMER_API UGstAppSinkComponent : public UGstElementComponent, public IGstAppSinkCallback, public IGstTextureCallback
 {
 	GENERATED_BODY()

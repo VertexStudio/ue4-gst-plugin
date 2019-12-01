@@ -8,7 +8,7 @@
 	Name() {}\
 	virtual ~Name() {}\
 	public:\
-	static Name* CreateInstance();\
+	static Name* CreateInstance(const char *ElementName);\
 	virtual void Destroy() = 0;\
 	private:
 

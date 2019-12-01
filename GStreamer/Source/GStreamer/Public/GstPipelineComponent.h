@@ -4,7 +4,7 @@
 #include "GstPipelineImpl.h"
 #include "GstPipelineComponent.generated.h"
 
-UCLASS( ClassGroup=(Custom), meta=(BlueprintSpawnableComponent) )
+UCLASS( ClassGroup=(Simbotic), meta=(BlueprintSpawnableComponent) )
 class GSTREAMER_API UGstPipelineComponent : public UGstElementComponent
 {
 	GENERATED_BODY()
@@ -16,9 +16,6 @@ public:
 	virtual void BeginPlay() override;
 	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 	virtual void UninitializeComponent() override;
-
-	UPROPERTY(Category="GstPipeline", EditAnywhere, BlueprintReadWrite)
-	bool UseGstMainLoop = true;
 
 	UPROPERTY(Category="GstPipeline", EditAnywhere, BlueprintReadWrite)
 	FString PipelineName;

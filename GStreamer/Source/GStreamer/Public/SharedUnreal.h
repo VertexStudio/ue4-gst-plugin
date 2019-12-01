@@ -3,6 +3,7 @@
 #include "Shared.h"
 #include "CoreMinimal.h"
 #include "UObject/Package.h"
+#include "UObject/ObjectMacros.h"
 
 DECLARE_LOG_CATEGORY_EXTERN(LogGStreamer, Log, All);
 

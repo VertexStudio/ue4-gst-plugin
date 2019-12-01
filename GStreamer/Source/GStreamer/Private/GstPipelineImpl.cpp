@@ -6,12 +6,12 @@ extern "C" {
 	#include <gst/gst.h>
 }
 
-class FGstPipelineTick : public IGstPipeline
+class FGstPipelineImpl : public IGstPipeline
 {
 public:
 
-	FGstPipelineTick() {}
-	~FGstPipelineTick() { Shutdown(); }
+	FGstPipelineImpl() {}
+	~FGstPipelineImpl() { Shutdown(); }
 	virtual void Destroy();
 
 	virtual bool Init(const char* Name, const char* Config);
@@ -23,6 +23,7 @@ public:
 	virtual struct _GstElement* GetGPipeline() { return m_Pipeline; }
 	virtual struct _GstBus* GetGBus() { return m_Bus; }
 
+	void WorkerLoop();
 	gboolean OnBusMessage(GstMessage* Message);
 
 private:
@@ -30,25 +31,28 @@ private:
 	std::string m_Name;
 	GstElement* m_Pipeline = nullptr;
 	GstBus* m_Bus = nullptr;
+	GMainLoop* m_Loop = nullptr;
+	std::unique_ptr<std::thread> m_Worker;
 };
 
-IGstPipeline *IGstPipeline::CreateTick()
+IGstPipeline* IGstPipeline::CreateInstance(const char *ElementName)
 {
-	auto Obj = new FGstPipelineTick();
-	GST_LOG_DBG_A("GstPipeline: CreateInstance %p", Obj);
+	auto Obj = new FGstPipelineImpl();
+	GST_LOG_DBG_A("GstPipeline: CreateInstance %p %s", Obj, ElementName);
 	return Obj;
 }
 
-void FGstPipelineTick::Destroy()
+void FGstPipelineImpl::Destroy()
 {
-	GST_LOG_DBG_A("GstPipeline: Destroy %p", this);
+	GST_LOG_DBG_A("GstPipeline: Destroy %p %s", this, m_Name.c_str());
 	delete this;
 }
 
 #define GST_RELEASE(func, ptr) do { if (ptr) { func(ptr); ptr = nullptr; } } while (0)
-static gboolean BusMessageFunc(GstBus*, GstMessage* Message, FGstPipelineTick* Context) { return Context->OnBusMessage(Message); }
+static gboolean BusMessageFunc(GstBus*, GstMessage* Message, FGstPipelineImpl* Context) { return Context->OnBusMessage(Message); }
+static void ThreadWorkerFunc(FGstPipelineImpl* Context) { Context->WorkerLoop(); }
 
-bool FGstPipelineTick::Init(const char* Name, const char* Config)
+bool FGstPipelineImpl::Init(const char* Name, const char* Config)
 {
 	GST_LOG_DBG_A("GstPipeline: Init <%s>", Name);
 
@@ -90,7 +94,7 @@ bool FGstPipelineTick::Init(const char* Name, const char* Config)
 	return false;
 }
 
-void FGstPipelineTick::Shutdown()
+void FGstPipelineImpl::Shutdown()
 {
 	Stop();
 
@@ -104,71 +108,66 @@ void FGstPipelineTick::Shutdown()
 	GST_RELEASE(gst_object_unref, m_Pipeline);
 }
 
-bool FGstPipelineTick::Start()
+bool FGstPipelineImpl::Start()
 {
 	GST_LOG_DBG_A("GstPipeline: Start <%s>", m_Name.c_str());
 
-	gst_element_set_state(m_Pipeline, GST_STATE_PLAYING);
+	if (m_Loop)
+	{
+		GST_LOG_ERR_A("GstPipeline: Already started");
+		return false;
+	}
 
-	return true;
+	for (;;)
+	{
+		m_Loop = g_main_loop_new(nullptr, FALSE);
+		if (!m_Loop)
+		{
+			GST_LOG_ERR_A("g_main_loop_new failed");
+			break;
+		}
 
-	// if (m_Loop)
-	// {
-	// 	GST_LOG_ERR_A("GstPipeline: Already started");
-	// 	return false;
-	// }
+		m_Worker.reset(new std::thread(ThreadWorkerFunc, this));
 
-	// for (;;)
-	// {
-	// 	m_Loop = g_main_loop_new(nullptr, FALSE);
-	// 	if (!m_Loop)
-	// 	{
-	// 		GST_LOG_ERR_A("g_main_loop_new failed");
-	// 		break;
-	// 	}
+		GST_LOG_DBG_A("GstPipeline: Start SUCCESS");
+		return true;
+	}
 
-	// 	m_Worker.reset(new std::thread(ThreadWorkerFunc, this));
-
-	// 	GST_LOG_DBG_A("GstPipeline: Start SUCCESS");
-	// 	return true;
-	// }
-
-	// GST_LOG_ERR_A("GstPipeline: Start FAILED");
-	// Stop();
-	// return false;
+	GST_LOG_ERR_A("GstPipeline: Start FAILED");
+	Stop();
+	return false;
 }
 
-void FGstPipelineTick::Stop()
+void FGstPipelineImpl::Stop()
 {
-	gst_element_set_state(m_Pipeline, GST_STATE_NULL); 
-	// if (m_Loop)
-	// {
-	// 	GST_LOG_DBG_A("GstPipeline: Stop <%s>", m_Name.c_str());
+	if (m_Loop)
+	{
+		GST_LOG_DBG_A("GstPipeline: Stop <%s>", m_Name.c_str());
 
-	// 	g_main_loop_quit(m_Loop);
+		g_main_loop_quit(m_Loop);
 
-	// 	if (m_Worker && m_Worker->joinable())
-	// 	{
-	// 		m_Worker->join();
-	// 	}
-	// 	m_Worker.reset(nullptr);
+		if (m_Worker && m_Worker->joinable())
+		{
+			m_Worker->join();
+		}
+		m_Worker.reset(nullptr);
 
-	// 	GST_RELEASE(g_main_loop_unref, m_Loop);
-	// }
+		GST_RELEASE(g_main_loop_unref, m_Loop);
+	}
 }
 
-// void FGstPipelineTick::WorkerLoop()
-// {
-// 	GST_LOG_DBG_A("GstPipelineWorker: Start <%s>", m_Name.c_str());
+void FGstPipelineImpl::WorkerLoop()
+{
+	GST_LOG_DBG_A("GstPipelineWorker: Start <%s>", m_Name.c_str());
 
-// 	gst_element_set_state(m_Pipeline, GST_STATE_PLAYING);
-// 	g_main_loop_run(m_Loop);
-// 	gst_element_set_state(m_Pipeline, GST_STATE_NULL); 
+	gst_element_set_state(m_Pipeline, GST_STATE_PLAYING);
+	g_main_loop_run(m_Loop);
+	gst_element_set_state(m_Pipeline, GST_STATE_NULL); 
 
-// 	GST_LOG_DBG_A("GstPipelineWorker: Stop <%s>", m_Name.c_str());
-// }
+	GST_LOG_DBG_A("GstPipelineWorker: Stop <%s>", m_Name.c_str());
+}
 
-gboolean FGstPipelineTick::OnBusMessage(GstMessage* Message)
+gboolean FGstPipelineImpl::OnBusMessage(GstMessage* Message)
 {
 	const int Type = GST_MESSAGE_TYPE(Message);
 	switch (Type)
@@ -187,7 +186,7 @@ gboolean FGstPipelineTick::OnBusMessage(GstMessage* Message)
 
 		case GST_MESSAGE_ERROR:
 			GST_LOG_ERR_A("GstPipeline: BUS ERROR <%s>", m_Name.c_str());
-			// g_main_loop_quit(m_Loop);
+			g_main_loop_quit(m_Loop);
 			break;
 
 		case GST_MESSAGE_WARNING:
